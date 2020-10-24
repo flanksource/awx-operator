@@ -1,0 +1,22 @@
+name: Publish Docker
+on:
+  push:
+    tags:
+      - "*"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - run: docker login docker.io  -u $USER -p $PASS
+        env:
+          USER: ${{ secrets.DOCKER_LOGIN }}
+          PASS: ${{ secrets.DOCKER_PASSWORD }}
+      - run: |
+          pip3 install docker molecule==3.0.6 yamllint ansible-lint openshift jmespath
+          ansible-galaxy collection install community.kubernetes
+          RELEASE_VERSION=v0.8.0
+          VERSION=${GITHUB_REF#refs/*/}
+          curl -OJL https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
+          operator-sdk build flanksource/awx-operator:$VERSION
+          docker push flanksource/awx-operator:$VERSION

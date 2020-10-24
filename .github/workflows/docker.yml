@@ -14,7 +14,6 @@ jobs:
           USER: ${{ secrets.DOCKER_LOGIN }}
           PASS: ${{ secrets.DOCKER_PASSWORD }}
       - run: |
-          pip3 install docker molecule==3.0.6 yamllint ansible-lint openshift jmespath
           ansible-galaxy collection install community.kubernetes
           RELEASE_VERSION=v0.8.0
           VERSION=${GITHUB_REF#refs/*/}

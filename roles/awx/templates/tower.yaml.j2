@@ -17,16 +17,16 @@ metadata:
   name: '{{ meta.name }}'
   namespace: '{{ meta.namespace }}'
   labels:
-    app: awx
+    app: awx-{{ meta.name }}
 spec:
   replicas: {{ tower_replicas }}
   selector:
     matchLabels:
-      app: awx
+      app: awx-{{ meta.name }}
   template:
     metadata:
       labels:
-        app: awx
+        app: awx-{{ meta.name }}
     spec:
       containers:
         - image: '{{ tower_redis_image }}'
@@ -240,7 +240,7 @@ metadata:
   name: '{{ meta.name }}-service'
   namespace: '{{ meta.namespace }}'
   labels:
-    app: awx
+    app: awx-{{ meta.name }}
 spec:
   ports:
     - port: 80
@@ -248,7 +248,7 @@ spec:
       targetPort: 8052
       name: http
   selector:
-    app: awx
+    app: awx-{{ meta.name }}
 {% if tower_ingress_type != "none" %}
   type: NodePort
 {% endif %}

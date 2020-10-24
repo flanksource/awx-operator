@@ -6,11 +6,11 @@ metadata:
   name: '{{ meta.name }}-postgres'
   namespace: '{{ meta.namespace }}'
   labels:
-    app: awx-postgres
+    app: awx-postgres-{{ meta.name }}
 spec:
   selector:
     matchLabels:
-      app: awx-postgres
+      app: awx-postgres-{{ meta.name }}
   serviceName: '{{ meta.name }}'
   replicas: 1
   updateStrategy:
@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       labels:
-        app: awx-postgres
+        app: awx-postgres-{{ meta.name }}
     spec:
       containers:
         - image: '{{ tower_postgres_image }}'
@@ -69,11 +69,11 @@ metadata:
   name: '{{ meta.name }}-postgres'
   namespace: '{{ meta.namespace }}'
   labels:
-    app: awx-postgres
+    app: awx-postgres-{{ meta.name }}
 spec:
   ports:
     - port: 5432
   clusterIP: None
   selector:
-    app: awx-postgres
+    app: awx-postgres-{{ meta.name }}
 

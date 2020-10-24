@@ -73,7 +73,7 @@
     kind: Pod
     namespace: '{{ meta.namespace }}'
     label_selectors:
-      - app=awx
+      - app=awx-{{ meta.name }}
   register: tower_pods
   until: "tower_pods['resources'][0]['status']['phase'] == 'Running'"
   delay: 5

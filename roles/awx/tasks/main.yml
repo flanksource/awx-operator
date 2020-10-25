@@ -5,15 +5,15 @@
 - name: Check for existing secret key
   k8s_info:
     kind: Secret
-    namespace: '{{ meta.namespace }}'
-    name: '{{ meta.name }}-secret-key'
+    namespace: "{{ meta.namespace }}"
+    name: "{{ meta.name }}-secret-key"
   register: secret_key_resources
 
 - name: Check for existing postgres configuration
   k8s_info:
     kind: Secret
-    namespace: '{{ meta.namespace }}'
-    name: '{{ meta.name }}-postgres-configuration'
+    namespace: "{{ meta.namespace }}"
+    name: "{{ meta.name }}-postgres-configuration"
   register: postgres_config_resources
 
 - name: Create Database configuration if it doesn't already exist
@@ -33,8 +33,8 @@
 - name: Read Database Configuration
   k8s_info:
     kind: Secret
-    namespace: '{{ meta.namespace }}'
-    name: '{{ meta.name }}-postgres-configuration'
+    namespace: "{{ meta.namespace }}"
+    name: "{{ meta.name }}-postgres-configuration"
   register: postgres_configuration
 
 - name: Store Database Configuration
@@ -71,7 +71,7 @@
 - name: Get the AWX pod information.
   k8s_info:
     kind: Pod
-    namespace: '{{ meta.namespace }}'
+    namespace: "{{ meta.namespace }}"
     label_selectors:
       - app=awx-{{ meta.name }}
   register: tower_pods
@@ -103,7 +103,7 @@
   register: database_check
   when: k8s_defs_result is not changed
 
-- name: Migrate the database if the K8s resources were updated.  # noqa 305
+- name: Migrate the database if the K8s resources were updated. # noqa 305
   community.kubernetes.k8s_exec:
     namespace: "{{ meta.namespace }}"
     pod: "{{ tower_pod_name }}"
@@ -113,4 +113,39 @@
   register: migrate_result
   when: (k8s_defs_result is changed) or (database_check is defined and database_check.return_code != 0)
 
-#- i_tasks: initialize.yml
+- name: Check if there are any super users defined.
+  community.kubernetes.k8s_exec:
+    namespace: "{{ meta.namespace }}"
+    pod: "{{ tower_pod_name }}"
+    container: "{{ meta.name }}-task"
+    command: >-
+      bash -c "echo 'from django.contrib.auth.models import User;
+      nsu = User.objects.filter(is_superuser=True).count();
+      exit(0 if nsu > 0 else 1)'
+      | awx-manage shell"
+  ignore_errors: true
+  register: users_result
+  changed_when: users_result.return_code > 0
+
+- name: Create super user via Django if it doesn't exist.
+  community.kubernetes.k8s_exec:
+    namespace: "{{ meta.namespace }}"
+    pod: "{{ tower_pod_name }}"
+    container: "{{ meta.name }}-task"
+    command: >-
+      bash -c "echo \"from django.contrib.auth.models import User;
+      User.objects.create_superuser('{{ tower_admin_user }}', '{{ tower_admin_email }}', '{{ tower_admin_password }}')\"
+      | awx-manage shell"
+  when: users_result.return_code > 0
+  no_log: true
+
+- name: Create preload data if necessary. # noqa 305
+  community.kubernetes.k8s_exec:
+    namespace: "{{ meta.namespace }}"
+    pod: "{{ tower_pod_name }}"
+    container: "{{ meta.name }}-task"
+    command: >-
+      bash -c "awx-manage create_preload_data"
+  register: cdo
+  changed_when: "'added' in cdo.stdout"
+  when: tower_create_preload_data | bool
